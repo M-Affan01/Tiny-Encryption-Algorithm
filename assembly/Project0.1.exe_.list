@@ -1,0 +1,460 @@
+EMU8086 GENERATED LISTING. MACHINE CODE <- SOURCE.
+ 
+Project0.1.exe_ -- emu8086 assembler version: 4.08  
+ 
+[ 23/05/2025  --  6:08:15 pm ] 
+ 
+===================================================================================================
+[LINE]     LOC: MACHINE CODE                          SOURCE
+===================================================================================================
+ 
+[   1]        :                                       .model small
+[   2]        :                                       .stack 100h ; Define stack size for .EXE
+[   3]        :                                       
+[   4]        :                                       .data
+[   5]        :                                       ; name type initializer
+[   6]    0100: 00 00                                 sum DW 0
+[   7]    0102: AC 02                                 delta DW 02ACh
+[   8]        :                                       
+[   9]        :                                       ; Global variables for encrypt/decrypt procedures
+[  10]    0104: 00 00                                 v0 DW ?
+[  11]    0106: 00 00                                 v1 DW ?
+[  12]        :                                       
+[  13]        :                                       ; Storage for plaintext blocks (8 characters total)
+[  14]    0108: 00 00                                 p_block1_w1 DW ? ; Plaintext: 1st block, 1st word (chars 1-2)
+[  15]    010A: 00 00                                 p_block1_w2 DW ? ; Plaintext: 1st block, 2nd word (chars 3-4)
+[  16]    010C: 00 00                                 p_block2_w1 DW ? ; Plaintext: 2nd block, 1st word (chars 5-6)
+[  17]    010E: 00 00                                 p_block2_w2 DW ? ; Plaintext: 2nd block, 2nd word (chars 7-8)
+[  18]        :                                       
+[  19]        :                                       ; Storage for ciphertext blocks
+[  20]    0110: 00 00                                 c_block1_w1 DW ? ; Ciphertext: 1st block, 1st word
+[  21]    0112: 00 00                                 c_block1_w2 DW ? ; Ciphertext: 1st block, 2nd word
+[  22]    0114: 00 00                                 c_block2_w1 DW ? ; Ciphertext: 2nd block, 1st word
+[  23]    0116: 00 00                                 c_block2_w2 DW ? ; Ciphertext: 2nd block, 2nd word
+[  24]        :                                       
+[  25]        :                                       ; Keys (remain the same)
+[  26]    0118: 00 00                                 k0 DW ?
+[  27]    011A: 00 00                                 k1 DW ?
+[  28]    011C: 00 00                                 k2 DW ?
+[  29]    011E: 00 00                                 k3 DW ?
+[  30]        :                                       
+[  31]        :                                       ; Storage for 'sum' state for decryption of each block
+[  32]    0120: 00 00                                 sum_for_b1_dec DW ?
+[  33]    0122: 00 00                                 sum_for_b2_dec DW ?
+[  34]        :                                       
+[  35]        :                                       ; Messages
+[  36]    0124: 45 6E 74 65 72 20 74 65 78 74 20 6F   msgV DB 'Enter text of 8 letters: $'
+                66 20 38 20 6C 65 74 74 65 72 73 3A 
+                20 24                               
+[  37]    013E: 0D 0A 45 6E 74 65 72 20 70 61 73 73   msgK DB 0Dh,0Ah,'Enter password of 4 keys: $'
+                77 6F 72 64 20 6F 66 20 34 20 6B 65 
+                79 73 3A 20 24                      
+[  38]    015B: 0D 0A 45 6E 63 72 79 70 74 69 6E 67   encrypting DB 0Dh,0Ah,'Encrypting... $'
+                2E 2E 2E 20 24                      
+[  39]    016C: 0D 0A 44 65 63 72 79 70 74 69 6E 67   decrypting DB 0Dh,0Ah,'Decrypting... $'
+                2E 2E 2E 20 24                      
+[  40]    017D: 0D 0A 45 6E 63 72 79 70 74 65 64 20   encryptedMsg DB 0Dh,0Ah,'Encrypted text: $'
+                74 65 78 74 3A 20 24                
+[  41]    0190: 0D 0A 44 65 63 72 79 70 74 65 64 20   decryptedMsg DB 0Dh,0Ah,'Decrypted text again: $'
+                74 65 78 74 20 61 67 61 69 6E 3A 20 
+                24                                  
+[  42]        :                                       
+[  43]        :                                       ; DB 8-bit integer
+[  44]        :                                       ; DW 16-bit integer
+[  45]        :                                       ; DD 32-bit integer or real
+[  46]        :                                       ; DQ 64-bit integer or real
+[  47]        :                                       ; DT 80-bit integer (10 byte)
+[  48]        :                                       
+[  49]        :                                       .code
+[  50]        :                                       
+[  51]    01B0:                                       main proc
+[  52]        :                                       ; Initialize DS to point to the data segment
+[  53]        :                                       ; This is essential for .EXE programs
+[  54]    01B0: B8 10 00                              mov ax, @data
+[  55]    01B3: 8E D8                                 mov ds, ax
+[  56]        :                                       
+[  57]        :                                       ; "Enter text of 8 letters: "
+[  58]    01B5: B4 09                                 mov ah, 09h
+[  59]    01B7: BA 24 00                              lea dx, msgV
+[  60]    01BA: CD 21                                 int 21h
+[  61]        :                                       
+[  62]        :                                       ; reading p_block1_w1 (chars 1-2)
+[  63]    01BC: B4 01                                 mov ah, 01h
+[  64]    01BE: CD 21                                 int 21h
+[  65]    01C0: 8A F8                                 mov bh, al
+[  66]    01C2: CD 21                                 int 21h
+[  67]    01C4: 8A D8                                 mov bl, al
+[  68]    01C6: 89 1E 08 00                           mov p_block1_w1, bx
+[  69]        :                                       
+[  70]        :                                       ; reading p_block1_w2 (chars 3-4)
+[  71]    01CA: B4 01                                 mov ah, 01h
+[  72]    01CC: CD 21                                 int 21h
+[  73]    01CE: 8A F8                                 mov bh, al
+[  74]    01D0: CD 21                                 int 21h
+[  75]    01D2: 8A D8                                 mov bl, al
+[  76]    01D4: 89 1E 0A 00                           mov p_block1_w2, bx
+[  77]        :                                       
+[  78]        :                                       ; reading p_block2_w1 (chars 5-6)
+[  79]    01D8: B4 01                                 mov ah, 01h
+[  80]    01DA: CD 21                                 int 21h
+[  81]    01DC: 8A F8                                 mov bh, al
+[  82]    01DE: CD 21                                 int 21h
+[  83]    01E0: 8A D8                                 mov bl, al
+[  84]    01E2: 89 1E 0C 00                           mov p_block2_w1, bx
+[  85]        :                                       
+[  86]        :                                       ; reading p_block2_w2 (chars 7-8)
+[  87]    01E6: B4 01                                 mov ah, 01h
+[  88]    01E8: CD 21                                 int 21h
+[  89]    01EA: 8A F8                                 mov bh, al
+[  90]    01EC: CD 21                                 int 21h
+[  91]    01EE: 8A D8                                 mov bl, al
+[  92]    01F0: 89 1E 0E 00                           mov p_block2_w2, bx
+[  93]        :                                       
+[  94]        :                                       ; "Enter password of 4 keys: "
+[  95]    01F4: B4 09                                 mov ah, 09h
+[  96]    01F6: BA 3E 00                              lea dx, msgK
+[  97]    01F9: CD 21                                 int 21h
+[  98]        :                                       
+[  99]        :                                       ; reading k[0]
+[ 100]    01FB: B4 01                                 mov ah, 01h
+[ 101]    01FD: CD 21                                 int 21h
+[ 102]    01FF: 33 DB                                 xor bx, bx
+[ 103]    0201: 8A D8                                 mov bl, al
+[ 104]    0203: 89 1E 18 00                           mov k0, bx
+[ 105]        :                                       
+[ 106]        :                                       ; reading k[1]
+[ 107]    0207: B4 01                                 mov ah, 01h
+[ 108]    0209: CD 21                                 int 21h
+[ 109]    020B: 33 DB                                 xor bx, bx
+[ 110]    020D: 8A D8                                 mov bl, al
+[ 111]    020F: 89 1E 1A 00                           mov k1, bx
+[ 112]        :                                       
+[ 113]        :                                       ; reading k[2]
+[ 114]    0213: B4 01                                 mov ah, 01h
+[ 115]    0215: CD 21                                 int 21h
+[ 116]    0217: 33 DB                                 xor bx, bx
+[ 117]    0219: 8A D8                                 mov bl, al
+[ 118]    021B: 89 1E 1C 00                           mov k2, bx
+[ 119]        :                                       
+[ 120]        :                                       ; reading k[3]
+[ 121]    021F: B4 01                                 mov ah, 01h
+[ 122]    0221: CD 21                                 int 21h
+[ 123]    0223: 33 DB                                 xor bx, bx
+[ 124]    0225: 8A D8                                 mov bl, al
+[ 125]    0227: 89 1E 1E 00                           mov k3, bx
+[ 126]        :                                       
+[ 127]        :                                       ; "Encrypting..."
+[ 128]    022B: B4 09                                 mov ah, 09h
+[ 129]    022D: BA 5B 00                              mov dx, offset encrypting
+[ 130]    0230: CD 21                                 int 21h
+[ 131]        :                                       
+[ 132]        :                                       ; Encrypt block 1 (p_block1_w1, p_block1_w2) -> (c_block1_w1, c_block1_w2)
+[ 133]    0232: A1 08 00                              mov ax, p_block1_w1
+[ 134]    0235: A3 04 00                              mov v0, ax      ; Load plaintext block 1 into v0
+[ 135]    0238: A1 0A 00                              mov ax, p_block1_w2
+[ 136]    023B: A3 06 00                              mov v1, ax      ; Load plaintext block 1 into v1
+[ 137]    023E: C7 06 00 00 00 00                     mov sum, 0      ; Reset sum for this block's encryption
+[ 138]    0244: E8 F8 00                              call encrypt    ; v0, v1 are now encrypted. global sum is 8*delta
+[ 139]    0247: A1 04 00                              mov ax, v0
+[ 140]    024A: A3 10 00                              mov c_block1_w1, ax ; Store encrypted block 1
+[ 141]    024D: A1 06 00                              mov ax, v1
+[ 142]    0250: A3 12 00                              mov c_block1_w2, ax
+[ 143]    0253: A1 00 00                              mov ax, sum
+[ 144]    0256: A3 20 00                              mov sum_for_b1_dec, ax ; Save the sum value needed for decryption
+[ 145]        :                                       
+[ 146]        :                                       ; Encrypt block 2 (p_block2_w1, p_block2_w2) -> (c_block2_w1, c_block2_w2)
+[ 147]    0259: A1 0C 00                              mov ax, p_block2_w1
+[ 148]    025C: A3 04 00                              mov v0, ax      ; Load plaintext block 2 into v0
+[ 149]    025F: A1 0E 00                              mov ax, p_block2_w2
+[ 150]    0262: A3 06 00                              mov v1, ax      ; Load plaintext block 2 into v1
+[ 151]    0265: C7 06 00 00 00 00                     mov sum, 0      ; Reset sum for this block's encryption
+[ 152]    026B: E8 D1 00                              call encrypt    ; v0, v1 are now encrypted. global sum is 8*delta
+[ 153]    026E: A1 04 00                              mov ax, v0
+[ 154]    0271: A3 14 00                              mov c_block2_w1, ax ; Store encrypted block 2
+[ 155]    0274: A1 06 00                              mov ax, v1
+[ 156]    0277: A3 16 00                              mov c_block2_w2, ax
+[ 157]    027A: A1 00 00                              mov ax, sum
+[ 158]    027D: A3 22 00                              mov sum_for_b2_dec, ax ; Save the sum value needed for decryption
+[ 159]        :                                       
+[ 160]        :                                       
+[ 161]        :                                       ; "Encrypted text: "
+[ 162]    0280: B4 09                                 mov ah, 09h
+[ 163]    0282: BA 7D 00                              mov dx, offset encryptedMsg
+[ 164]    0285: CD 21                                 int 21h
+[ 165]        :                                       
+[ 166]    0287: B4 02                                 mov ah, 02h
+[ 167]        :                                       ; print c_block1_w1
+[ 168]    0289: 8B 1E 10 00                           mov bx, c_block1_w1
+[ 169]    028D: 8A D7                                 mov dl, bh
+[ 170]    028F: CD 21                                 int 21h
+[ 171]    0291: 8A D3                                 mov dl, bl
+[ 172]    0293: CD 21                                 int 21h
+[ 173]        :                                       ; print c_block1_w2
+[ 174]    0295: 8B 1E 12 00                           mov bx, c_block1_w2
+[ 175]    0299: 8A D7                                 mov dl, bh
+[ 176]    029B: CD 21                                 int 21h
+[ 177]    029D: 8A D3                                 mov dl, bl
+[ 178]    029F: CD 21                                 int 21h
+[ 179]        :                                       ; print c_block2_w1
+[ 180]    02A1: 8B 1E 14 00                           mov bx, c_block2_w1
+[ 181]    02A5: 8A D7                                 mov dl, bh
+[ 182]    02A7: CD 21                                 int 21h
+[ 183]    02A9: 8A D3                                 mov dl, bl
+[ 184]    02AB: CD 21                                 int 21h
+[ 185]        :                                       ; print c_block2_w2
+[ 186]    02AD: 8B 1E 16 00                           mov bx, c_block2_w2
+[ 187]    02B1: 8A D7                                 mov dl, bh
+[ 188]    02B3: CD 21                                 int 21h
+[ 189]    02B5: 8A D3                                 mov dl, bl
+[ 190]    02B7: CD 21                                 int 21h
+[ 191]        :                                       
+[ 192]        :                                       ; "Decrypting..."
+[ 193]    02B9: B4 09                                 mov ah, 09h
+[ 194]    02BB: BA 6C 00                              mov dx, offset decrypting
+[ 195]    02BE: CD 21                                 int 21h
+[ 196]        :                                       
+[ 197]        :                                       ; Decrypt block 2 (c_block2_w1, c_block2_w2) -> (p_block2_w1, p_block2_w2)
+[ 198]    02C0: A1 14 00                              mov ax, c_block2_w1
+[ 199]    02C3: A3 04 00                              mov v0, ax      ; Load ciphertext block 2 into v0
+[ 200]    02C6: A1 16 00                              mov ax, c_block2_w2
+[ 201]    02C9: A3 06 00                              mov v1, ax      ; Load ciphertext block 2 into v1
+[ 202]    02CC: A1 22 00                              mov ax, sum_for_b2_dec
+[ 203]    02CF: A3 00 00                              mov sum, ax     ; Restore sum for this block's decryption (should be 8*delta)
+[ 204]    02D2: E8 F6 00                              call decrypt    ; v0, v1 are now decrypted. global sum is 0
+[ 205]    02D5: A1 04 00                              mov ax, v0
+[ 206]    02D8: A3 0C 00                              mov p_block2_w1, ax ; Store decrypted block 2
+[ 207]    02DB: A1 06 00                              mov ax, v1
+[ 208]    02DE: A3 0E 00                              mov p_block2_w2, ax
+[ 209]        :                                       
+[ 210]        :                                       ; Decrypt block 1 (c_block1_w1, c_block1_w2) -> (p_block1_w1, p_block1_w2)
+[ 211]    02E1: A1 10 00                              mov ax, c_block1_w1
+[ 212]    02E4: A3 04 00                              mov v0, ax      ; Load ciphertext block 1 into v0
+[ 213]    02E7: A1 12 00                              mov ax, c_block1_w2
+[ 214]    02EA: A3 06 00                              mov v1, ax      ; Load ciphertext block 1 into v1
+[ 215]    02ED: A1 20 00                              mov ax, sum_for_b1_dec
+[ 216]    02F0: A3 00 00                              mov sum, ax     ; Restore sum for this block's decryption (should be 8*delta)
+[ 217]    02F3: E8 D5 00                              call decrypt    ; v0, v1 are now decrypted. global sum is 0
+[ 218]    02F6: A1 04 00                              mov ax, v0
+[ 219]    02F9: A3 08 00                              mov p_block1_w1, ax ; Store decrypted block 1
+[ 220]    02FC: A1 06 00                              mov ax, v1
+[ 221]    02FF: A3 0A 00                              mov p_block1_w2, ax
+[ 222]        :                                       
+[ 223]        :                                       ; "Decrypted text again: "
+[ 224]    0302: B4 09                                 mov ah, 09h
+[ 225]    0304: BA 90 00                              mov dx, offset decryptedMsg
+[ 226]    0307: CD 21                                 int 21h
+[ 227]        :                                       
+[ 228]    0309: B4 02                                 mov ah, 02h
+[ 229]        :                                       ; print p_block1_w1
+[ 230]    030B: 8B 1E 08 00                           mov bx, p_block1_w1
+[ 231]    030F: 8A D7                                 mov dl, bh
+[ 232]    0311: CD 21                                 int 21h
+[ 233]    0313: 8A D3                                 mov dl, bl
+[ 234]    0315: CD 21                                 int 21h
+[ 235]        :                                       ; print p_block1_w2
+[ 236]    0317: 8B 1E 0A 00                           mov bx, p_block1_w2
+[ 237]    031B: 8A D7                                 mov dl, bh
+[ 238]    031D: CD 21                                 int 21h
+[ 239]    031F: 8A D3                                 mov dl, bl
+[ 240]    0321: CD 21                                 int 21h
+[ 241]        :                                       ; print p_block2_w1
+[ 242]    0323: 8B 1E 0C 00                           mov bx, p_block2_w1
+[ 243]    0327: 8A D7                                 mov dl, bh
+[ 244]    0329: CD 21                                 int 21h
+[ 245]    032B: 8A D3                                 mov dl, bl
+[ 246]    032D: CD 21                                 int 21h
+[ 247]        :                                       ; print p_block2_w2
+[ 248]    032F: 8B 1E 0E 00                           mov bx, p_block2_w2
+[ 249]    0333: 8A D7                                 mov dl, bh
+[ 250]    0335: CD 21                                 int 21h
+[ 251]    0337: 8A D3                                 mov dl, bl
+[ 252]    0339: CD 21                                 int 21h
+[ 253]        :                                       
+[ 254]        :                                       ; Terminate program and return to DOS
+[ 255]        :                                       ; This is the standard way for .EXE programs
+[ 256]    033B: B4 4C                                 mov ah, 4ch
+[ 257]    033D: CD 21                                 int 21h
+[ 258]        :                                       
+[ 259]        :                                       main endp
+[ 260]        :                                       
+[ 261]        :                                       
+[ 262]        :                                       ; ============================================== encryption procedure ============================================== ;
+[ 263]    033F:                                       encrypt proc
+[ 264]        :                                       
+[ 265]    033F: B9 08 00                              mov cx, 8       ; counter for "loop" instruction
+[ 266]        :                                       
+[ 267]    0342:                                       encLoop:
+[ 268]        :                                       ; sum += delta
+[ 269]    0342: 8B 1E 02 00                           mov bx, delta
+[ 270]    0346: A1 00 00                              mov ax, sum
+[ 271]    0349: 03 C3                                 add ax, bx
+[ 272]    034B: A3 00 00                              mov sum, ax
+[ 273]        :                                       
+[ 274]        :                                       ; v0 += ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1)
+[ 275]        :                                       ; dx = ((v1<<4) + k0)
+[ 276]    034E: A1 06 00                              mov ax, v1
+[ 277]    0351: D1 E0 D1 E0 D1 E0 D1 E0               shl ax, 4
+[ 278]    0359: 8B 1E 18 00                           mov bx, k0
+[ 279]    035D: 03 C3                                 add ax, bx
+[ 280]    035F: 8B D0                                 mov dx, ax
+[ 281]        :                                       ; dx ^= (v1 + sum)
+[ 282]    0361: A1 06 00                              mov ax, v1
+[ 283]    0364: 8B 1E 00 00                           mov bx, sum
+[ 284]    0368: 03 C3                                 add ax, bx
+[ 285]    036A: 33 D0                                 xor dx, ax
+[ 286]        :                                       ; dx ^= ((v1>>5) + k1)
+[ 287]    036C: A1 06 00                              mov ax, v1
+[ 288]    036F: D1 E8 D1 E8 D1 E8 D1 E8 D1 E8         shr ax, 5
+[ 289]    0379: 8B 1E 1A 00                           mov bx, k1
+[ 290]    037D: 03 C3                                 add ax, bx
+[ 291]    037F: 33 D0                                 xor dx, ax
+[ 292]        :                                       ; v0 += dx
+[ 293]    0381: A1 04 00                              mov ax, v0
+[ 294]    0384: 03 C2                                 add ax, dx
+[ 295]    0386: A3 04 00                              mov v0, ax
+[ 296]        :                                       
+[ 297]        :                                       ; v1 += ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3)
+[ 298]        :                                       ; dx = ((v0<<4) + k2)
+[ 299]    0389: A1 04 00                              mov ax, v0
+[ 300]    038C: D1 E0 D1 E0 D1 E0 D1 E0               shl ax, 4
+[ 301]    0394: 8B 1E 1C 00                           mov bx, k2
+[ 302]    0398: 03 C3                                 add ax, bx
+[ 303]    039A: 8B D0                                 mov dx, ax
+[ 304]        :                                       ; dx ^= (v0 + sum)
+[ 305]    039C: A1 04 00                              mov ax, v0
+[ 306]    039F: 8B 1E 00 00                           mov bx, sum
+[ 307]    03A3: 03 C3                                 add ax, bx
+[ 308]    03A5: 33 D0                                 xor dx, ax
+[ 309]        :                                       ; dx ^= ((v0>>5) + k3)
+[ 310]    03A7: A1 04 00                              mov ax, v0
+[ 311]    03AA: D1 E8 D1 E8 D1 E8 D1 E8 D1 E8         shr ax, 5
+[ 312]    03B4: 8B 1E 1E 00                           mov bx, k3
+[ 313]    03B8: 03 C3                                 add ax, bx
+[ 314]    03BA: 33 D0                                 xor dx, ax
+[ 315]        :                                       ; v1 += dx
+[ 316]    03BC: A1 06 00                              mov ax, v1
+[ 317]    03BF: 03 C2                                 add ax, dx
+[ 318]    03C1: A3 06 00                              mov v1, ax
+[ 319]        :                                       
+[ 320]    03C4: 49 E3 03 E9 78 FF                     loop encLoop        ; "loop" use "cx" as its counter
+[ 321]        :                                       
+[ 322]    03CA: C3                                    ret
+[ 323]        :                                       encrypt endp
+[ 324]        :                                       ; ============================================= END of encryption proc ============================================= ;
+[ 325]        :                                       
+[ 326]        :                                       
+[ 327]        :                                       
+[ 328]        :                                       
+[ 329]        :                                       ; ============================================== decryption procedure ============================================== ;
+[ 330]    03CB:                                       decrypt proc
+[ 331]        :                                       
+[ 332]    03CB: B9 08 00                              mov cx, 8       ; counter for "loop" instruction
+[ 333]        :                                       
+[ 334]    03CE:                                       decLoop:
+[ 335]        :                                       ; v1 -= ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3)
+[ 336]        :                                       ; dx = ((v0<<4) + k2)
+[ 337]    03CE: A1 04 00                              mov ax, v0
+[ 338]    03D1: D1 E0 D1 E0 D1 E0 D1 E0               shl ax, 4
+[ 339]    03D9: 8B 1E 1C 00                           mov bx, k2
+[ 340]    03DD: 03 C3                                 add ax, bx
+[ 341]    03DF: 8B D0                                 mov dx, ax
+[ 342]        :                                       ; dx ^= (v0 + sum)
+[ 343]    03E1: A1 04 00                              mov ax, v0
+[ 344]    03E4: 8B 1E 00 00                           mov bx, sum
+[ 345]    03E8: 03 C3                                 add ax, bx
+[ 346]    03EA: 33 D0                                 xor dx, ax
+[ 347]        :                                       ; dx ^= ((v0>>5) + k3)
+[ 348]    03EC: A1 04 00                              mov ax, v0
+[ 349]    03EF: D1 E8 D1 E8 D1 E8 D1 E8 D1 E8         shr ax, 5
+[ 350]    03F9: 8B 1E 1E 00                           mov bx, k3
+[ 351]    03FD: 03 C3                                 add ax, bx
+[ 352]    03FF: 33 D0                                 xor dx, ax
+[ 353]        :                                       ; v1 -= dx
+[ 354]    0401: A1 06 00                              mov ax, v1
+[ 355]    0404: 2B C2                                 sub ax, dx
+[ 356]    0406: A3 06 00                              mov v1, ax
+[ 357]        :                                       
+[ 358]        :                                       ; v0 -= ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1)
+[ 359]        :                                       ; dx = ((v1<<4) + k0)
+[ 360]    0409: A1 06 00                              mov ax, v1
+[ 361]    040C: D1 E0 D1 E0 D1 E0 D1 E0               shl ax, 4
+[ 362]    0414: 8B 1E 18 00                           mov bx, k0
+[ 363]    0418: 03 C3                                 add ax, bx
+[ 364]    041A: 8B D0                                 mov dx, ax
+[ 365]        :                                       ; dx ^= (v1 + sum)
+[ 366]    041C: A1 06 00                              mov ax, v1
+[ 367]    041F: 8B 1E 00 00                           mov bx, sum
+[ 368]    0423: 03 C3                                 add ax, bx
+[ 369]    0425: 33 D0                                 xor dx, ax
+[ 370]        :                                       ; dx ^= ((v1>>5) + k1)
+[ 371]    0427: A1 06 00                              mov ax, v1
+[ 372]    042A: D1 E8 D1 E8 D1 E8 D1 E8 D1 E8         shr ax, 5
+[ 373]    0434: 8B 1E 1A 00                           mov bx, k1
+[ 374]    0438: 03 C3                                 add ax, bx
+[ 375]    043A: 33 D0                                 xor dx, ax
+[ 376]        :                                       ; v0 -= dx
+[ 377]    043C: A1 04 00                              mov ax, v0
+[ 378]    043F: 2B C2                                 sub ax, dx
+[ 379]    0441: A3 04 00                              mov v0, ax
+[ 380]        :                                       
+[ 381]        :                                       ; sum -= delta
+[ 382]    0444: 8B 1E 02 00                           mov bx, delta
+[ 383]    0448: A1 00 00                              mov ax, sum
+[ 384]    044B: 2B C3                                 sub ax, bx
+[ 385]    044D: A3 00 00                              mov sum, ax
+[ 386]        :                                       
+[ 387]    0450: 49 E3 03 E9 78 FF                     loop decLoop        ; "loop" use "cx" as its counter
+[ 388]        :                                       
+[ 389]    0456: C3                                    ret
+[ 390]        :                                       decrypt endp
+[ 391]        :                                       ; ============================================= END of decryption proc ============================================= ;
+[ 392]        :                                       
+[ 393]        :                                       ; Define the entry point for the program
+[ 394]        :                                       end main
+[ 395]        :                                       
+[ 396]        :                                       
+ 
+===================================================================================================
+ 
+EXE HEADER - bytes from 0000 to 01FF inclusive.
+
+0000: 4D      -   exe signature (M)
+0001: 5A      -   exe signature (Z)
+0002: 57      -   bytes on last page (l.byte)
+0003: 00      -   bytes on last page (h.byte)
+0004: 04      -   512 byte pages in file (l.byte)
+0005: 00      -   512 byte pages in file (h.byte)
+0006: 01      -   relocations (l.byte)
+0007: 00      -   relocations (h.byte)
+0008: 20      -   paragraphs in header (l.byte)
+0009: 00      -   paragraphs in header (h.byte)
+000A: 00      -   minimum memory (l.byte)
+000B: 00      -   minimum memory (h.byte)
+000C: FF      -   maximum memory (l.byte)
+000D: FF      -   maximum memory (h.byte)
+000E: 00      -   SS - stack segment (l.byte)
+000F: 00      -   SS - stack segment (h.byte)
+0010: 00      -   SP - stack pointer (l.byte)
+0011: 01      -   SP - stack pointer (h.byte)
+0012: D2      -   check sum (l.byte)
+0013: 0C      -   check sum (h.byte)
+0014: 00      -   IP - instruction pointer (l.byte)
+0015: 00      -   IP - instruction pointer (h.byte)
+0016: 1B      -   CS - code segment (l.byte)
+0017: 00      -   CS - code segment (h.byte)
+0018: 1E      -   relocation table adress (l.byte)
+0019: 00      -   relocation table adress (h.byte)
+001A: 00      -   overlay number (l.byte)
+001B: 00      -   overlay number (h.byte)
+001C: 01      -   signature (l.byte)
+001D: 00      -   signature (h.byte)
+001E: 01      -   relocation table - offset inside segment (l.byte)
+001F: 00      -   relocation table - offset inside segment (h.byte)
+0020: 1B      -   relocation table - segment anchor (l.byte)
+0021: 00      -   relocation table - segment anchor (h.byte)
+0022 to 01FF  -   reserved relocation area  (00) 
+
+
+
+
+===================================================================================================

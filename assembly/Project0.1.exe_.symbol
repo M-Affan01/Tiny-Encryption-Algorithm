@@ -1,0 +1,40 @@
+< THE SYMBOL TABLE >  Project0.1.exe_  --  emu8086 assembler version: 4.08 
+===================================================================================================
+Name                     	Offset    	Size      	Type      	Segment   
+===================================================================================================
+STACK                    	00000     	-5        	SEGMENT   	(ITSELF)  
+DATA                     	00010     	-5        	SEGMENT   	(ITSELF)  
+SUM                      	00000     	2         	VAR       	data      
+DELTA                    	00002     	2         	VAR       	data      
+V0                       	00004     	2         	VAR       	data      
+V1                       	00006     	2         	VAR       	data      
+P_BLOCK1_W1              	00008     	2         	VAR       	data      
+P_BLOCK1_W2              	0000A     	2         	VAR       	data      
+P_BLOCK2_W1              	0000C     	2         	VAR       	data      
+P_BLOCK2_W2              	0000E     	2         	VAR       	data      
+C_BLOCK1_W1              	00010     	2         	VAR       	data      
+C_BLOCK1_W2              	00012     	2         	VAR       	data      
+C_BLOCK2_W1              	00014     	2         	VAR       	data      
+C_BLOCK2_W2              	00016     	2         	VAR       	data      
+K0                       	00018     	2         	VAR       	data      
+K1                       	0001A     	2         	VAR       	data      
+K2                       	0001C     	2         	VAR       	data      
+K3                       	0001E     	2         	VAR       	data      
+SUM_FOR_B1_DEC           	00020     	2         	VAR       	data      
+SUM_FOR_B2_DEC           	00022     	2         	VAR       	data      
+MSGV                     	00024     	1         	VAR       	data      
+MSGK                     	0003E     	1         	VAR       	data      
+ENCRYPTING               	0005B     	1         	VAR       	data      
+DECRYPTING               	0006C     	1         	VAR       	data      
+ENCRYPTEDMSG             	0007D     	1         	VAR       	data      
+DECRYPTEDMSG             	00090     	1         	VAR       	data      
+CODE                     	0001B     	-5        	SEGMENT   	(ITSELF)  
+MAIN                     	00000     	-1        	NEAR      	code      
+ENCRYPT                  	0018F     	-1        	NEAR      	code      
+ENCLOOP                  	00192     	-1        	LABEL     	code      
+DECRYPT                  	0021B     	-1        	NEAR      	code      
+DECLOOP                  	0021E     	-1        	LABEL     	code      
+===================================================================================================
+[ 23/05/2025  --  6:08:15 pm ] 
+< END >
+ 

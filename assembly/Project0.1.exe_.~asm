@@ -1,0 +1,399 @@
+.model small
+.stack 100h ; Define stack size for .EXE
+
+.data
+; name type initializer
+sum DW 0
+delta DW 02ACh
+
+; Global variables for encrypt/decrypt procedures
+v0 DW ?
+v1 DW ?
+
+; Storage for plaintext blocks (8 characters total)
+p_block1_w1 DW ? ; Plaintext: 1st block, 1st word (chars 1-2)
+p_block1_w2 DW ? ; Plaintext: 1st block, 2nd word (chars 3-4)
+p_block2_w1 DW ? ; Plaintext: 2nd block, 1st word (chars 5-6)
+p_block2_w2 DW ? ; Plaintext: 2nd block, 2nd word (chars 7-8)
+
+; Storage for ciphertext blocks
+c_block1_w1 DW ? ; Ciphertext: 1st block, 1st word
+c_block1_w2 DW ? ; Ciphertext: 1st block, 2nd word
+c_block2_w1 DW ? ; Ciphertext: 2nd block, 1st word
+c_block2_w2 DW ? ; Ciphertext: 2nd block, 2nd word
+
+; Keys (remain the same)
+k0 DW ?
+k1 DW ?
+k2 DW ?
+k3 DW ?
+
+; Storage for 'sum' state for decryption of each block
+sum_for_b1_dec DW ?
+sum_for_b2_dec DW ?
+
+; Messages
+msgV DB 'Enter text of 8 letters: $'
+msgK DB 0Dh,0Ah,'Enter password of 4 keys: $'
+encrypting DB 0Dh,0Ah,'Encrypting... $'
+decrypting DB 0Dh,0Ah,'Decrypting... $'
+encryptedMsg DB 0Dh,0Ah,'Encrypted text: $'
+decryptedMsg DB 0Dh,0Ah,'Decrypted text again: $'
+
+; DB 8-bit integer
+; DW 16-bit integer
+; DD 32-bit integer or real
+; DQ 64-bit integer or real
+; DT 80-bit integer (10 byte)
+
+.code
+
+main proc
+; Initialize DS to point to the data segment
+; This is essential for .EXE programs
+mov ax, @data
+mov ds, ax
+
+; "Enter text of 8 letters: "
+mov ah, 09h
+lea dx, msgV
+int 21h
+
+; reading p_block1_w1 (chars 1-2)
+mov ah, 01h
+int 21h
+mov bh, al
+int 21h
+mov bl, al
+mov p_block1_w1, bx
+
+; reading p_block1_w2 (chars 3-4)
+mov ah, 01h
+int 21h
+mov bh, al
+int 21h
+mov bl, al
+mov p_block1_w2, bx
+
+; reading p_block2_w1 (chars 5-6)
+mov ah, 01h
+int 21h
+mov bh, al
+int 21h
+mov bl, al
+mov p_block2_w1, bx
+
+; reading p_block2_w2 (chars 7-8)
+mov ah, 01h
+int 21h
+mov bh, al
+int 21h
+mov bl, al
+mov p_block2_w2, bx
+
+; "Enter password of 4 keys: "
+mov ah, 09h
+lea dx, msgK
+int 21h
+
+; reading k[0]
+mov ah, 01h
+int 21h
+xor bx, bx
+mov bl, al
+mov k0, bx
+
+; reading k[1]
+mov ah, 01h
+int 21h
+xor bx, bx
+mov bl, al
+mov k1, bx
+
+; reading k[2]
+mov ah, 01h
+int 21h
+xor bx, bx
+mov bl, al
+mov k2, bx
+
+; reading k[3]
+mov ah, 01h
+int 21h
+xor bx, bx
+mov bl, al
+mov k3, bx
+
+; "Encrypting..."
+mov ah, 09h
+mov dx, offset encrypting
+int 21h
+
+; Encrypt block 1 (p_block1_w1, p_block1_w2) -> (c_block1_w1, c_block1_w2)
+mov ax, p_block1_w1
+mov v0, ax      ; Load plaintext block 1 into v0
+mov ax, p_block1_w2
+mov v1, ax      ; Load plaintext block 1 into v1
+mov sum, 0      ; Reset sum for this block's encryption
+call encrypt    ; v0, v1 are now encrypted. global sum is 8*delta
+mov ax, v0
+mov c_block1_w1, ax ; Store encrypted block 1
+mov ax, v1
+mov c_block1_w2, ax
+mov ax, sum
+mov sum_for_b1_dec, ax ; Save the sum value needed for decryption
+
+; Encrypt block 2 (p_block2_w1, p_block2_w2) -> (c_block2_w1, c_block2_w2)
+mov ax, p_block2_w1
+mov v0, ax      ; Load plaintext block 2 into v0
+mov ax, p_block2_w2
+mov v1, ax      ; Load plaintext block 2 into v1
+mov sum, 0      ; Reset sum for this block's encryption
+call encrypt    ; v0, v1 are now encrypted. global sum is 8*delta
+mov ax, v0
+mov c_block2_w1, ax ; Store encrypted block 2
+mov ax, v1
+mov c_block2_w2, ax
+mov ax, sum
+mov sum_for_b2_dec, ax ; Save the sum value needed for decryption
+
+
+; "Encrypted text: "
+mov ah, 09h
+mov dx, offset encryptedMsg
+int 21h
+
+mov ah, 02h
+; print c_block1_w1
+mov bx, c_block1_w1
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print c_block1_w2
+mov bx, c_block1_w2
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print c_block2_w1
+mov bx, c_block2_w1
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print c_block2_w2
+mov bx, c_block2_w2
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+
+; "Decrypting..."
+mov ah, 09h
+mov dx, offset decrypting
+int 21h
+
+; Decrypt block 2 (c_block2_w1, c_block2_w2) -> (p_block2_w1, p_block2_w2)
+mov ax, c_block2_w1
+mov v0, ax      ; Load ciphertext block 2 into v0
+mov ax, c_block2_w2
+mov v1, ax      ; Load ciphertext block 2 into v1
+mov ax, sum_for_b2_dec
+mov sum, ax     ; Restore sum for this block's decryption (should be 8*delta)
+call decrypt    ; v0, v1 are now decrypted. global sum is 0
+mov ax, v0
+mov p_block2_w1, ax ; Store decrypted block 2
+mov ax, v1
+mov p_block2_w2, ax
+
+; Decrypt block 1 (c_block1_w1, c_block1_w2) -> (p_block1_w1, p_block1_w2)
+mov ax, c_block1_w1
+mov v0, ax      ; Load ciphertext block 1 into v0
+mov ax, c_block1_w2
+mov v1, ax      ; Load ciphertext block 1 into v1
+mov ax, sum_for_b1_dec
+mov sum, ax     ; Restore sum for this block's decryption (should be 8*delta)
+call decrypt    ; v0, v1 are now decrypted. global sum is 0
+mov ax, v0
+mov p_block1_w1, ax ; Store decrypted block 1
+mov ax, v1
+mov p_block1_w2, ax
+
+; "Decrypted text again: "
+mov ah, 09h
+mov dx, offset decryptedMsg
+int 21h
+
+mov ah, 02h
+; print p_block1_w1
+mov bx, p_block1_w1
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print p_block1_w2
+mov bx, p_block1_w2
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print p_block2_w1
+mov bx, p_block2_w1
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+; print p_block2_w2
+mov bx, p_block2_w2
+mov dl, bh
+int 21h
+mov dl, bl
+int 21h
+
+; Terminate program and return to DOS
+; This is the standard way for .EXE programs
+mov ah, 4ch
+int 21h
+
+main endp
+
+
+; ============================================== encryption procedure ============================================== ;
+encrypt proc
+
+mov cx, 8       ; counter for "loop" instruction
+
+encLoop:
+; sum += delta
+mov bx, delta
+mov ax, sum
+add ax, bx
+mov sum, ax
+
+; v0 += ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1)
+; dx = ((v1<<4) + k0)
+mov ax, v1
+shl ax, 4
+mov bx, k0
+add ax, bx
+mov dx, ax
+; dx ^= (v1 + sum)
+mov ax, v1
+mov bx, sum
+add ax, bx
+xor dx, ax
+; dx ^= ((v1>>5) + k1)
+mov ax, v1
+shr ax, 5
+mov bx, k1
+add ax, bx
+xor dx, ax
+; v0 += dx
+mov ax, v0
+add ax, dx
+mov v0, ax
+
+; v1 += ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3)
+; dx = ((v0<<4) + k2)
+mov ax, v0
+shl ax, 4
+mov bx, k2
+add ax, bx
+mov dx, ax
+; dx ^= (v0 + sum)
+mov ax, v0
+mov bx, sum
+add ax, bx
+xor dx, ax
+; dx ^= ((v0>>5) + k3)
+mov ax, v0
+shr ax, 5
+mov bx, k3
+add ax, bx
+xor dx, ax
+; v1 += dx
+mov ax, v1
+add ax, dx
+mov v1, ax
+
+loop encLoop        ; "loop" use "cx" as its counter
+
+ret
+encrypt endp
+; ============================================= END of encryption proc ============================================= ;
+
+
+
+
+; ============================================== decryption procedure ============================================== ;
+decrypt proc
+
+mov cx, 8       ; counter for "loop" instruction
+
+decLoop:
+; v1 -= ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3)
+; dx = ((v0<<4) + k2)
+mov ax, v0
+shl ax, 4
+mov bx, k2
+add ax, bx
+mov dx, ax
+; dx ^= (v0 + sum)
+mov ax, v0
+mov bx, sum
+add ax, bx
+xor dx, ax
+; dx ^= ((v0>>5) + k3)
+mov ax, v0
+shr ax, 5
+mov bx, k3
+add ax, bx
+xor dx, ax
+; v1 -= dx
+mov ax, v1
+sub ax, dx
+mov v1, ax
+
+; v0 -= ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1)
+; dx = ((v1<<4) + k0)
+mov ax, v1
+shl ax, 4
+mov bx, k0
+add ax, bx
+mov dx, ax
+; dx ^= (v1 + sum)
+mov ax, v1
+mov bx, sum
+add ax, bx
+xor dx, ax
+; dx ^= ((v1>>5) + k1)
+mov ax, v1
+shr ax, 5
+mov bx, k1
+add ax, bx
+xor dx, ax
+; v0 -= dx
+mov ax, v0
+sub ax, dx
+mov v0, ax
+
+; sum -= delta
+mov bx, delta
+mov ax, sum
+sub ax, bx
+mov sum, ax
+
+loop decLoop        ; "loop" use "cx" as its counter
+
+ret
+decrypt endp
+; ============================================= END of decryption proc ============================================= ;
+
+; Define the entry point for the program
+end main
+
+
+
+
+; [SOURCE]: C:\emu8086\MySource\Project0.1.asm
